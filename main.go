@@ -24,8 +24,6 @@ type measurementOutput struct {
 	RTMR0        string `json:"rtmr0"`
 	RTMR1        string `json:"rtmr1"`
 	RTMR2        string `json:"rtmr2"`
-	MrAggregated string `json:"mr_aggregated"`
-	MrImage      string `json:"mr_image"`
 }
 
 const (
@@ -200,8 +198,6 @@ func main() {
 			RTMR0:        fmt.Sprintf("%x", measurements.RTMR0),
 			RTMR1:        fmt.Sprintf("%x", measurements.RTMR1),
 			RTMR2:        fmt.Sprintf("%x", measurements.RTMR2),
-			MrAggregated: measurements.CalculateMrAggregated(mrKeyProvider),
-			MrImage:      measurements.CalculateMrImage(),
 		}
 		jsonData, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
@@ -214,7 +210,5 @@ func main() {
 		fmt.Printf("RTMR0: %x\n", measurements.RTMR0)
 		fmt.Printf("RTMR1: %x\n", measurements.RTMR1)
 		fmt.Printf("RTMR2: %x\n", measurements.RTMR2)
-		fmt.Printf("MR_AGGREGATED: %s\n", measurements.CalculateMrAggregated(mrKeyProvider))
-		fmt.Printf("MR_IMAGE: %s\n", measurements.CalculateMrImage())
 	}
 }

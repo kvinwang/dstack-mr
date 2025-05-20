@@ -139,8 +139,7 @@ func measureTdxQemuKernelImage(kernelData []byte, initRdSize uint32, memSize uin
 	return MeasureTdxQemuKernelImageData(kernelData, initRdSize, memSize, acpiDataSize)
 }
 
-func MeasureTdxQemuKernelImageData(kernelData []byte, initRdSize uint32, memSize uint64, acpiDataSize uint32) ([]byte, error) {
-	memSizeBytes := memSize * 1024 * 1024 // Convert to bytes.
+func MeasureTdxQemuKernelImageData(kernelData []byte, initRdSize uint32, memSizeBytes uint64, acpiDataSize uint32) ([]byte, error) {
 	// Check if kernel data is long enough for all required fields
 	const minKernelLength = 0x1000
 	if len(kernelData) < minKernelLength {

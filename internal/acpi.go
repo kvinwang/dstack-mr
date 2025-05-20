@@ -18,6 +18,9 @@ var templates embed.FS
 //
 // Returns the raw ACPI tables, RSDP and QEMU table loader command blob.
 func GenerateTablesQemu(memorySize uint64, cpuCount uint8) ([]byte, []byte, []byte, error) {
+	if cpuCount == 0 {
+		return nil, nil, nil, fmt.Errorf("cpuCount must be greater than 0")
+	}
 	// Load and decompress template data
 	templateGz, err := templates.ReadFile("templates.json.gz")
 	if err != nil {
@@ -35,21 +38,26 @@ func GenerateTablesQemu(memorySize uint64, cpuCount uint8) ([]byte, []byte, []by
 		return nil, nil, nil, fmt.Errorf("failed to decompress template data: %w", err)
 	}
 
-	// Decode directly into a map instead of the TemplateData struct
-	templates := make(map[string]string)
+	type TemplateData struct {
+		Tables   []string `json:"tables"`
+		Offsets  []int    `json:"offsets"`
+	}
+	templates := TemplateData{}
 	if err := json.Unmarshal(templateJSON, &templates); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to parse template data: %w", err)
 	}
 
-	// Get template for CPU count
-	tplHex, ok := templates[fmt.Sprintf("%d", cpuCount)]
-	if !ok {
+	if len(templates.Tables) < int(cpuCount) {
 		return nil, nil, nil, fmt.Errorf("template for %d CPUs is not available", cpuCount)
 	}
 
-	tpl, err := hex.DecodeString(tplHex)
+	tplData := templates.Tables[cpuCount]
+	if tplData == "" {
+		return nil, nil, nil, fmt.Errorf("template for %d CPUs is not available", cpuCount)
+	}
+
+	tpl, err := hex.DecodeString(tplData)
 	if err != nil {
-		fmt.Printf("ACPI table template: %s\n", tplHex)
 		return nil, nil, nil, fmt.Errorf("malformed ACPI table template, %w", err)
 	}
 
@@ -59,8 +67,8 @@ func GenerateTablesQemu(memorySize uint64, cpuCount uint8) ([]byte, []byte, []by
 		return nil, nil, nil, err
 	}
 
-	lengthOffset := dsdtLen - 0x2ac
-	rangeMinimumOffset := lengthOffset - 12
+	rangeMinimumOffset := templates.Offsets[cpuCount]
+	lengthOffset := templates.Offsets[cpuCount] + 12
 
 	// Handle memory split at 2816 MiB (0xB0000000).
 	if memorySize >= 0xB0000000 {
