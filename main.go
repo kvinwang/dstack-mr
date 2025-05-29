@@ -29,6 +29,7 @@ type measurementOutput struct {
 const (
 	GB = 1024 * 1024 * 1024 // in bytes
 	MB = 1024 * 1024
+	Version = "0.5.0"
 )
 
 var knownKeyProviders = map[string]string{
@@ -105,7 +106,7 @@ func main() {
 		kernelCmdline string
 		jsonOutput    bool
 		metadataPath  string
-		mrKeyProvider string = defaultMrKeyProvider
+		showVersion   bool
 	)
 
 	flag.StringVar(&fwPath, "fw", "", "Path to firmware file")
@@ -116,12 +117,13 @@ func main() {
 	flag.StringVar(&kernelCmdline, "cmdline", "", "Kernel command line")
 	flag.BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	flag.StringVar(&metadataPath, "metadata", "", "Path to DStack metadata.json file")
-	flag.StringVar(&mrKeyProvider, "mrkp", defaultMrKeyProvider, "Measurement of key provider")
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
 	flag.Parse()
 
-	// If the mrKeyProvider is in the knownKeyProviders, replace it with the value
-	if knownKeyProvider, ok := knownKeyProviders[mrKeyProvider]; ok {
-		mrKeyProvider = knownKeyProvider
+	// Show version and exit if requested
+	if showVersion {
+		fmt.Printf("dstack-mr version %s\n", Version)
+		os.Exit(0)
 	}
 
 	// If metadata file is provided, read it and override other options
