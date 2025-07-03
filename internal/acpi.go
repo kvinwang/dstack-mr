@@ -17,12 +17,12 @@ var templates embed.FS
 // GenerateTablesQemu generates ACPI tables for the given TD configuration.
 //
 // Returns the raw ACPI tables, RSDP and QEMU table loader command blob.
-func GenerateTablesQemu(memorySize uint64, cpuCount uint8) ([]byte, []byte, []byte, error) {
+func GenerateTablesQemu(memorySize uint64, cpuCount uint8, dstackVersion uint32) ([]byte, []byte, []byte, error) {
 	if cpuCount == 0 {
 		return nil, nil, nil, fmt.Errorf("cpuCount must be greater than 0")
 	}
 	// Load and decompress template data
-	templateGz, err := templates.ReadFile("templates.json.gz")
+	templateGz, err := templates.ReadFile(fmt.Sprintf("templates-v%d.json.gz", dstackVersion))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to read template data: %w", err)
 	}
@@ -39,8 +39,8 @@ func GenerateTablesQemu(memorySize uint64, cpuCount uint8) ([]byte, []byte, []by
 	}
 
 	type TemplateData struct {
-		Tables   []string `json:"tables"`
-		Offsets  []int    `json:"offsets"`
+		Tables  []string `json:"tables"`
+		Offsets []int    `json:"offsets"`
 	}
 	templates := TemplateData{}
 	if err := json.Unmarshal(templateJSON, &templates); err != nil {

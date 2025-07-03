@@ -123,9 +123,9 @@ func measureLog(log [][]byte) []byte {
 }
 
 // measureTdxQemuAcpiTables measures QEMU-generated ACPI tables for TDX.
-func measureTdxQemuAcpiTables(memorySize uint64, cpuCount uint8) ([]byte, []byte, []byte, error) {
+func measureTdxQemuAcpiTables(memorySize uint64, cpuCount uint8, dstackVersion uint32) ([]byte, []byte, []byte, error) {
 	// Generate ACPI tables
-	tables, rsdp, loader, err := GenerateTablesQemu(memorySize, cpuCount)
+	tables, rsdp, loader, err := GenerateTablesQemu(memorySize, cpuCount, dstackVersion)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to generate ACPI tables: %w", err)
 	}
@@ -530,7 +530,7 @@ func (m *TdxMeasurements) CalculateMrImage() string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func MeasureTdxQemu(fwData []byte, kernelData []byte, initrdData []byte, memorySize uint64, cpuCount uint8, kernelCmdline string) (*TdxMeasurements, error) {
+func MeasureTdxQemu(fwData []byte, kernelData []byte, initrdData []byte, memorySize uint64, cpuCount uint8, kernelCmdline string, dstackVersion uint32) (*TdxMeasurements, error) {
 	// Parse TDVF metadata.
 	tdvfMeta, err := parseTdvfMetadata(fwData)
 	if err != nil {
@@ -546,7 +546,7 @@ func MeasureTdxQemu(fwData []byte, kernelData []byte, initrdData []byte, memoryS
 	tdHobHash := measureTdxQemuTdHob(memorySize, tdvfMeta)
 	cfvImageHash, _ := hex.DecodeString("344BC51C980BA621AAA00DA3ED7436F7D6E549197DFE699515DFA2C6583D95E6412AF21C097D473155875FFD561D6790")
 	boot000Hash, _ := hex.DecodeString("23ADA07F5261F12F34A0BD8E46760962D6B4D576A416F1FEA1C64BC656B1D28EACF7047AE6E967C58FD2A98BFA74C298")
-	acpiTablesHash, acpiRsdpHash, acpiLoaderHash, err := measureTdxQemuAcpiTables(memorySize, cpuCount)
+	acpiTablesHash, acpiRsdpHash, acpiLoaderHash, err := measureTdxQemuAcpiTables(memorySize, cpuCount, dstackVersion)
 	if err != nil {
 		return nil, err
 	}

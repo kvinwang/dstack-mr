@@ -17,25 +17,21 @@ type DStackMetadata struct {
 	Kernel  string `json:"kernel"`
 	Cmdline string `json:"cmdline"`
 	Initrd  string `json:"initrd"`
+	Version string `json:"version"`
 }
 
 type measurementOutput struct {
-	MRTD         string `json:"mrtd"`
-	RTMR0        string `json:"rtmr0"`
-	RTMR1        string `json:"rtmr1"`
-	RTMR2        string `json:"rtmr2"`
+	MRTD  string `json:"mrtd"`
+	RTMR0 string `json:"rtmr0"`
+	RTMR1 string `json:"rtmr1"`
+	RTMR2 string `json:"rtmr2"`
 }
 
 const (
-	GB = 1024 * 1024 * 1024 // in bytes
-	MB = 1024 * 1024
+	GB      = 1024 * 1024 * 1024 // in bytes
+	MB      = 1024 * 1024
 	Version = "0.5.0"
 )
-
-var knownKeyProviders = map[string]string{
-	"sgx-v0": "0x4888adb026ff91c1320c4f544a9f5d9e0561e13fc64947a10aa1556d0071b2cc",
-	"none":   "0x3369c4d32b9f1320ebba5ce9892a283127b7e96e1d511d7f292e5d9ed2c10b8c",
-}
 
 // parseMemorySize parses a human readable memory size (e.g., "1G", "512M") into bytes
 func parseMemorySize(size string) (uint64, error) {
@@ -96,25 +92,16 @@ func (m *memoryValue) Set(value string) error {
 }
 
 func main() {
-	const defaultMrKeyProvider = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	var (
-		fwPath        string
-		kernelPath    string
-		initrdPath    string
-		memorySize    memoryValue
-		cpuCountUint  uint
-		kernelCmdline string
-		jsonOutput    bool
-		metadataPath  string
-		showVersion   bool
+		memorySize   memoryValue
+		cpuCountUint uint
+		jsonOutput   bool
+		metadataPath string
+		showVersion  bool
 	)
 
-	flag.StringVar(&fwPath, "fw", "", "Path to firmware file")
-	flag.StringVar(&kernelPath, "kernel", "", "Path to kernel file")
-	flag.StringVar(&initrdPath, "initrd", "", "Path to initrd file")
 	flag.Var(&memorySize, "memory", "Memory size (e.g., 512M, 1G, 2G)")
 	flag.UintVar(&cpuCountUint, "cpu", 1, "Number of CPUs")
-	flag.StringVar(&kernelCmdline, "cmdline", "", "Kernel command line")
 	flag.BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	flag.StringVar(&metadataPath, "metadata", "", "Path to DStack metadata.json file")
 	flag.BoolVar(&showVersion, "version", false, "Show version information")
@@ -126,43 +113,50 @@ func main() {
 		os.Exit(0)
 	}
 
-	// If metadata file is provided, read it and override other options
-	if metadataPath != "" {
-		metadataDir := filepath.Dir(metadataPath)
-		data, err := os.ReadFile(metadataPath)
-		if err != nil {
-			fmt.Printf("Error reading metadata file: %v\n", err)
-			os.Exit(1)
-		}
-
-		var metadata DStackMetadata
-		if err := json.Unmarshal(data, &metadata); err != nil {
-			fmt.Printf("Error parsing metadata file: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Override paths with metadata values
-		if fwPath == "" {
-			fwPath = filepath.Join(metadataDir, metadata.Bios)
-		}
-		if kernelPath == "" {
-			kernelPath = filepath.Join(metadataDir, metadata.Kernel)
-		}
-		if initrdPath == "" && metadata.Initrd != "" {
-			initrdPath = filepath.Join(metadataDir, metadata.Initrd)
-		}
-		if kernelCmdline == "" {
-			kernelCmdline = metadata.Cmdline
-			if metadata.Initrd != "" {
-				kernelCmdline += " initrd=initrd"
-			}
-		}
-	}
-
-	if fwPath == "" || kernelPath == "" {
-		fmt.Println("Error: firmware and kernel paths are required (either directly or via metadata.json)")
+	// Check if metadata path is provided (required)
+	if metadataPath == "" {
+		fmt.Println("Error: metadata path is required")
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	// Read metadata file and override other options
+	metadataDir := filepath.Dir(metadataPath)
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		fmt.Printf("Error reading metadata file: %v\n", err)
+		os.Exit(1)
+	}
+
+	var metadata DStackMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		fmt.Printf("Error parsing metadata file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Override paths with metadata values
+	fwPath := filepath.Join(metadataDir, metadata.Bios)
+	kernelPath := filepath.Join(metadataDir, metadata.Kernel)
+	initrdPath := filepath.Join(metadataDir, metadata.Initrd)
+	kernelCmdline := metadata.Cmdline
+	if metadata.Initrd != "" {
+		kernelCmdline += " initrd=initrd"
+	}
+
+	var dstackVersion uint = 0
+	// Parse version string
+	if metadata.Version != "" {
+		versionParts := strings.Split(metadata.Version, ".")
+		if len(versionParts) >= 2 {
+			major, _ := strconv.Atoi(versionParts[0])
+			minor, _ := strconv.Atoi(versionParts[1])
+
+			if major > 0 || minor >= 5 {
+				dstackVersion = 1
+			} else {
+				dstackVersion = 0
+			}
+		}
 	}
 
 	// Read files
@@ -188,7 +182,7 @@ func main() {
 	}
 
 	// Calculate measurements
-	measurements, err := internal.MeasureTdxQemu(fwData, kernelData, initrdData, uint64(memorySize), uint8(cpuCountUint), kernelCmdline)
+	measurements, err := internal.MeasureTdxQemu(fwData, kernelData, initrdData, uint64(memorySize), uint8(cpuCountUint), kernelCmdline, uint32(dstackVersion))
 	if err != nil {
 		fmt.Printf("Error calculating measurements: %v\n", err)
 		os.Exit(1)
@@ -196,10 +190,10 @@ func main() {
 
 	if jsonOutput {
 		output := measurementOutput{
-			MRTD:         fmt.Sprintf("%x", measurements.MRTD),
-			RTMR0:        fmt.Sprintf("%x", measurements.RTMR0),
-			RTMR1:        fmt.Sprintf("%x", measurements.RTMR1),
-			RTMR2:        fmt.Sprintf("%x", measurements.RTMR2),
+			MRTD:  fmt.Sprintf("%x", measurements.MRTD),
+			RTMR0: fmt.Sprintf("%x", measurements.RTMR0),
+			RTMR1: fmt.Sprintf("%x", measurements.RTMR1),
+			RTMR2: fmt.Sprintf("%x", measurements.RTMR2),
 		}
 		jsonData, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
