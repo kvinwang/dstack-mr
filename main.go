@@ -30,7 +30,7 @@ type measurementOutput struct {
 const (
 	GB      = 1024 * 1024 * 1024 // in bytes
 	MB      = 1024 * 1024
-	Version = "0.5.0"
+	Version = "0.5.1"
 )
 
 // parseMemorySize parses a human readable memory size (e.g., "1G", "512M") into bytes
