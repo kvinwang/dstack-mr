@@ -1,5 +1,15 @@
 # dstack-mr
 
+> **This repository is archived and no longer maintained.**
+>
+> Please use the official tools from the [Dstack-TEE/dstack](https://github.com/Dstack-TEE/dstack) repository:
+> - **For measurement calculation**: [dstack-mr](https://github.com/Dstack-TEE/dstack/tree/master/dstack-mr)
+> - **For attestation verification** (recommended): [verifier](https://github.com/Dstack-TEE/dstack/tree/master/verifier)
+
+---
+
+## Original README
+
 A CLI tool for calculating TDX (Intel Trust Domain Extensions) measurements for Dstack images.
 
 This project is based on [oasis-cli](https://github.com/oasisprotocol/cli) and modified for Dstack-specific TDX measurement requirements.
